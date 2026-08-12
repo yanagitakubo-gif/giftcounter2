@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ギフトカウンター">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b1826">
+<meta name="format-detection" content="telephone=no">
+<title>ギフトカウンター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#0b1826;
+    --bg-panel:#122a3d;
+    --bg-panel-2:#0f2233;
+    --line:#28455c;
+    --text-main:#f4f7f2;
+    --text-dim:#8fa6b8;
+    --accent-a:#ff5a5f;
+    --accent-b:#ffb703;
+    --accent-c:#4cc9f0;
+    --accent-d:#9d8cff;
+    --font-display:'Oswald', 'Noto Sans JP', sans-serif;
+    --font-body:'Noto Sans JP', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
+  html{-webkit-text-size-adjust:100%; height:100%;}
+  html,body{margin:0; padding:0; overscroll-behavior-y:none;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(76,201,240,0.08), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(255,90,95,0.08), transparent 40%),
+      var(--bg-base);
+    color:var(--text-main);
+    font-family:var(--font-body);
+    min-height:100%;
+    min-height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 76px) calc(env(safe-area-inset-left) + 12px);
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  input, textarea{ -webkit-user-select:text; user-select:text; }
+  .wrap{max-width:960px; margin:0 auto;}
+
+  header{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    margin-bottom:12px;
+    border-bottom:2px solid var(--line);
+    padding-bottom:10px;
+  }
+  .title-block .eyebrow{
+    font-family:var(--font-display);
+    letter-spacing:.35em;
+    font-size:11px;
+    color:var(--accent-c);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(24px,4vw,34px);
+    margin:0;
+    letter-spacing:.02em;
+  }
+  .live-clock{
+    font-family:var(--font-display);
+    font-size:13px;
+    color:var(--text-dim);
+    text-align:right;
+    line-height:1.5;
+  }
+  .live-clock b{color:var(--text-main); font-size:15px;}
+  .sync-status{
+    font-family:var(--font-body); font-size:10px; color:var(--text-dim);
+    margin-top:2px;
+  }
+  .sync-status.ok{color:#7fe0a0;}
+  .sync-status.error{color:var(--accent-a);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .card{
+    background:linear-gradient(180deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px 12px 10px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:'';
+    position:absolute; left:0; top:0; bottom:0; width:5px;
+    background:var(--c, var(--accent-a));
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:4px; gap:8px;
+  }
+  .card-name-input{
+    background:transparent; border:none; color:var(--text-main);
+    font-family:var(--font-body); font-weight:700; font-size:14px;
+    width:100%; padding:2px 0; border-bottom:1px dashed transparent;
+  }
+  .card-name-input:focus{outline:none; border-bottom:1px dashed var(--text-dim);}
+  .emoji-input{
+    background:transparent; border:none; color:var(--text-main);
+    font-size:16px; width:30px; flex-shrink:0; text-align:center;
+    padding:2px 0; border-bottom:1px dashed transparent;
+  }
+  .emoji-input:focus{outline:none; border-bottom:1px dashed var(--text-dim);}
+  .card-remove{
+    background:none; border:none; color:var(--text-dim);
+    cursor:pointer; font-size:16px; padding:4px 6px; line-height:1;
+    border-radius:8px; flex-shrink:0;
+    min-width:32px; min-height:32px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .card-remove:hover{color:var(--accent-a); background:rgba(255,90,95,0.1);}
+
+  .count-row{
+    display:flex; align-items:center; justify-content:center;
+    gap:14px; margin:2px 0 0;
+  }
+  .count-num{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:34px;
+    min-width:70px;
+    text-align:center;
+    color:var(--c, var(--accent-a));
+    line-height:1;
+    transition:transform .18s ease;
+  }
+  .count-num.bump{ transform:scale(1.18); }
+  .count-unit{
+    font-size:11px; color:var(--text-dim); text-align:center; margin-top:-2px;
+  }
+
+  .until-line{
+    text-align:center;
+    font-family:var(--font-display);
+    font-size:17px;
+    font-weight:600;
+    color:var(--c, var(--accent-c));
+    margin:0 0 4px;
+    letter-spacing:.02em;
+    transition:transform .16s ease;
+  }
+  .until-line small{
+    display:block; font-family:var(--font-body); font-weight:400;
+    font-size:10px; color:var(--text-dim); letter-spacing:0;
+    margin-top:1px;
+  }
+
+  .base-time-row{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:11px; color:var(--text-dim); margin-bottom:4px;
+  }
+  .base-time-row input[type="time"]{
+    background:var(--bg-base); border:1px solid var(--line); color:var(--text-main);
+    border-radius:6px; font-family:var(--font-body); font-size:13px; padding:2px 5px;
+    min-height:26px;
+  }
+
+  .btn-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+    margin-bottom:4px;
+  }
+  .btn-pair{display:flex; flex-direction:row; gap:4px;}
+  .step-btn{
+    font-family:var(--font-display);
+    background:var(--bg-base);
+    border:1px solid var(--line);
+    color:var(--text-main);
+    border-radius:8px;
+    padding:8px 2px;
+    font-size:13px;
+    cursor:pointer;
+    width:100%;
+    min-height:36px;
+    transition:background .12s, border-color .12s, transform .06s;
+  }
+  .step-btn:active{transform:scale(.93); background:var(--bg-panel-2);}
+  .step-btn.plus{color:var(--c, var(--accent-a)); font-weight:700;}
+  .step-btn.minus{color:var(--text-dim); font-size:11px; padding:8px 2px; min-height:36px;}
+
+  .bottom-row{display:flex; gap:8px; justify-content:center; margin-top:2px;}
+  .ghost-btn{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:7px; padding:5px 10px; font-size:11px; cursor:pointer;
+    font-family:var(--font-body);
+    min-height:30px;
+    transition:border-color .12s, color .12s;
+  }
+  .ghost-btn:active{border-color:var(--text-main); color:var(--text-main);}
+  .ghost-btn:disabled, .sticky-reset:disabled{opacity:.4; cursor:default;}
+
+  .step-config{
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    margin-top:6px; font-size:10px; color:var(--text-dim); flex-wrap:wrap;
+  }
+  .step-config input{
+    background:var(--bg-base); border:1px solid var(--line);
+    color:var(--text-main); border-radius:6px; text-align:center;
+    font-family:var(--font-body); font-size:13px; padding:2px 3px;
+    min-height:24px;
+  }
+  .step-config input.unit-input{width:44px;}
+  .step-config input.steps-input{width:74px;}
+
+  .add-card-wrap{
+    border:1.5px dashed var(--line);
+    background:transparent;
+    border-radius:12px;
+    display:flex; flex-direction:row; align-items:center; justify-content:center;
+    color:var(--text-dim);
+    font-family:var(--font-display);
+    font-size:11px;
+    min-height:36px;
+    gap:8px;
+    padding:6px 10px;
+  }
+  .add-card-wrap > div{display:none;}
+  .add-card-wrap button{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:7px; padding:6px 10px; font-size:11px; cursor:pointer;
+    font-family:var(--font-body); width:auto; min-height:30px; flex:1;
+    transition:border-color .15s, color .15s;
+  }
+  .add-card-wrap button:active{border-color:var(--accent-c); color:var(--accent-c);}
+
+  .panel{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px 12px;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:6px; flex-wrap:wrap; gap:6px;
+  }
+  .panel-head h2{
+    font-family:var(--font-display);
+    font-size:12px; letter-spacing:.15em; text-transform:uppercase;
+    margin:0; color:var(--text-dim);
+  }
+  .panel-actions{display:flex; gap:6px;}
+  .copy-btn{
+    background:var(--accent-c); border:1px solid var(--accent-c); color:#04202e;
+    border-radius:7px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;
+    font-family:var(--font-body);
+  }
+  .copy-btn:active{transform:scale(.97);}
+  .copy-btn.copied{background:#7fe0a0; border-color:#7fe0a0;}
+
+  textarea#output{
+    width:100%;
+    background:var(--bg-base);
+    border:1px solid var(--line);
+    border-radius:8px;
+    color:var(--text-main);
+    font-family:'Noto Sans JP', monospace;
+    font-size:13px;
+    line-height:1.5;
+    padding:8px 10px;
+    resize:vertical;
+    min-height:76px;
+  }
+
+  .format-row{
+    display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;
+    font-size:11px; color:var(--text-dim);
+  }
+  .format-row label{display:flex; align-items:center; gap:4px; cursor:pointer;}
+
+  .log-toggle{
+    margin-top:8px; font-size:11px; color:var(--text-dim); cursor:pointer;
+    display:flex; align-items:center; gap:6px; user-select:none;
+  }
+  .log-list{
+    margin-top:6px; max-height:100px; overflow-y:auto;
+    font-size:11px; color:var(--text-dim);
+    border-top:1px solid var(--line); padding-top:6px;
+    display:none;
+  }
+  .log-list.open{display:block;}
+  .log-list div{padding:2px 0; border-bottom:1px dashed rgba(255,255,255,0.05);}
+  .log-list span{color:var(--text-main);}
+
+  footer{
+    text-align:center; color:var(--text-dim); font-size:10px; margin-top:10px;
+    padding-bottom:4px;
+  }
+
+  .sticky-bar{
+    position:fixed; left:0; right:0; bottom:0;
+    display:flex; gap:10px;
+    padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);
+    background:linear-gradient(180deg, rgba(11,24,38,0), rgba(11,24,38,0.96) 30%, #0b1826 100%);
+    backdrop-filter:blur(6px);
+    z-index:20;
+  }
+  .sticky-bar button{
+    flex:1;
+    font-family:var(--font-body);
+    font-size:14px;
+    font-weight:700;
+    border-radius:11px;
+    padding:11px 10px;
+    cursor:pointer;
+    border:1px solid var(--line);
+    min-height:42px;
+  }
+  .sticky-copy{
+    background:var(--accent-c); border-color:var(--accent-c); color:#04202e;
+  }
+  .sticky-copy.copied{background:#7fe0a0; border-color:#7fe0a0;}
+  .sticky-reset{
+    background:transparent; color:var(--text-dim); flex:0 0 auto; width:96px;
+  }
+
+  @media (max-width:480px){
+    .count-num{font-size:40px; min-width:76px;}
+    .until-line{font-size:19px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Live Gift Counter</div>
+      <h1>ギフトカウンター</h1>
+    </div>
+    <div class="live-clock">経過時間<br><b id="elapsed">00:00:00</b>
+      <div class="sync-status" id="syncStatus">🔄 同期準備中…</div>
+    </div>
+  </header>
+
+  <div class="grid" id="cardGrid"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>テキスト出力</h2>
+      <div class="panel-actions">
+        <button class="ghost-btn" id="undoBtn" disabled>元に戻す</button>
+        <button class="ghost-btn" id="resetAllBtn">全部リセット</button>
+        <button class="copy-btn" id="copyBtn">コピーする</button>
+      </div>
+    </div>
+    <textarea id="output" readonly></textarea>
+    <div class="format-row">
+      <label><input type="radio" name="fmt" value="deco" checked> デコ</label>
+      <label><input type="radio" name="fmt" value="multi"> 複数行</label>
+      <label><input type="radio" name="fmt" value="single"> 1行(区切り)</label>
+      <label><input type="radio" name="fmt" value="plain"> 数字のみ</label>
+    </div>
+    <div class="log-toggle" id="logToggle">▶ 操作ログを表示</div>
+    <div class="log-list" id="logList"></div>
+  </div>
+
+  <footer>ギフトが届くたびにボタンをタップ → 下のバーからいつでもコピーできます</footer>
+</div>
+
+<div class="sticky-bar">
+  <button class="sticky-reset" id="stickyUndoBtn" disabled>元に戻す</button>
+  <button class="sticky-reset" id="stickyResetBtn">リセット</button>
+  <button class="sticky-copy" id="stickyCopyBtn">テキストをコピー</button>
+</div>
+
+<!-- ▼▼▼ Firebase 共有機能 ▼▼▼ -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyATp04vH29jpyMsG5AYfkKlGaDfCr3RDk8",
+    authDomain: "gift-counter-49f0f.firebaseapp.com",
+    databaseURL: "https://gift-counter-49f0f-default-rtdb.firebaseio.com",
+    projectId: "gift-counter-49f0f",
+    storageBucket: "gift-counter-49f0f.firebasestorage.app",
+    messagingSenderId: "722199964401",
+    appId: "1:722199964401:web:19a612d0c756ef57435750"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // URLの ?room=xxxx で共有部屋を分ける。無ければ自動生成してURLに付与する
+  const params = new URLSearchParams(location.search);
+  if(!params.get('room')){
+    const newRoom = Math.random().toString(36).slice(2,8);
+    params.set('room', newRoom);
+    history.replaceState(null, '', location.pathname + '?' + params.toString());
+  }
+  const ROOM_ID = params.get('room');
+  const roomRef = db.ref('counters/' + ROOM_ID);
+</script>
+<!-- ▲▲▲ Firebase 共有機能 ▲▲▲ -->
+
+<script>
+(function(){
+  const COLORS = ['var(--accent-a)','var(--accent-b)','var(--accent-c)','var(--accent-d)'];
+
+  function nowHHMM(){
+    const d = new Date();
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  let state = {
+    startTime: Date.now(),
+    items: [
+      { id:'situp', type:'count', name:'腹筋', unit:'回', count:0, quickSteps:[1,5,10], colorIdx:0, emoji:'🏋️‍♀️' },
+      { id:'drink', type:'count', name:'一杯飲む', unit:'杯', count:0, quickSteps:[1], colorIdx:1, emoji:'🍻' },
+      { id:'ext',   type:'time',  name:'延長', unit:'分', count:0, quickSteps:[15,30,60], colorIdx:2, baseTime: nowHHMM(), emoji:'⏳' },
+    ],
+    log: []
+  };
+
+  const grid = document.getElementById('cardGrid');
+  const output = document.getElementById('output');
+  const logList = document.getElementById('logList');
+  const syncStatusEl = document.getElementById('syncStatus');
+
+  const STORAGE_KEY = 'gift-counter-shared-state';
+  let lastAppliedAt = 0;
+  let firebaseReady = false;
+
+  function setSyncStatus(kind, whenText){
+    if(kind === 'ok'){
+      syncStatusEl.textContent = '🔄 同期済み ' + (whenText || nowHHMM());
+      syncStatusEl.className = 'sync-status ok';
+    } else if(kind === 'busy'){
+      syncStatusEl.textContent = '🔄 同期中…';
+      syncStatusEl.className = 'sync-status';
+    } else {
+      syncStatusEl.textContent = '⚠️ 同期エラー（この端末のみ表示）';
+      syncStatusEl.className = 'sync-status error';
+    }
+  }
+
+  function isEditingAnyInput(){
+    const ae = document.activeElement;
+    return ae && grid.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+  }
+
+  function pushState(){
+    if(!firebaseReady) return;
+    const payload = { items: state.items, updatedAt: Date.now() };
+    lastAppliedAt = payload.updatedAt;
+    roomRef.set(payload)
+      .then(() => setSyncStatus('ok'))
+      .catch(e => { console.error('sync push failed', e); setSyncStatus('error'); });
+  }
+
+  // ---- 元に戻す機能 ----
+  let undoStack = [];
+  function snapshotUndo(){
+    undoStack.push(JSON.stringify(state.items));
+    if(undoStack.length > 20) undoStack.shift();
+    updateUndoButton();
+  }
+  function undo(){
+    if(undoStack.length === 0) return;
+    const prev = undoStack.pop();
+    state.items = JSON.parse(prev);
+    logAction('操作を1つ元に戻しました');
+    render();
+    pushState();
+    updateUndoButton();
+  }
+  function updateUndoButton(){
+    const btn = document.getElementById('undoBtn');
+    const btn2 = document.getElementById('stickyUndoBtn');
+    if(btn) btn.disabled = undoStack.length === 0;
+    if(btn2) btn2.disabled = undoStack.length === 0;
+  }
+
+  function init(){
+    setSyncStatus('busy');
+    roomRef.once('value').then(snapshot => {
+      const data = snapshot.val();
+      if(data && data.items && data.items.length){
+        state.items = data.items;
+        lastAppliedAt = data.updatedAt || Date.now();
+      }
+      firebaseReady = true;
+      render();
+      setSyncStatus('ok');
+
+      roomRef.on('value', snapshot => {
+        const data = snapshot.val();
+        if(!data || !data.items) return;
+        if(data.updatedAt && data.updatedAt <= lastAppliedAt) return; // 自分自身の書き込みのエコーは無視
+        lastAppliedAt = data.updatedAt;
+        state.items = data.items;
+        if(!isEditingAnyInput()){
+          render();
+        }
+        setSyncStatus('ok');
+      });
+
+      tick();
+      setInterval(tick, 1000);
+    }).catch(e => {
+      console.error('sync init failed', e);
+      firebaseReady = true;
+      setSyncStatus('error');
+      render();
+      tick();
+      setInterval(tick, 1000);
+    });
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function stepLabel(step, unit, type){
+    if(type === 'time'){
+      if(step % 60 === 0) return (step/60) + '時間';
+      return step + '分';
+    }
+    return step + unit;
+  }
+
+  function computeUntil(baseTime, minutes){
+    if(!baseTime) baseTime = nowHHMM();
+    const [bh, bm] = baseTime.split(':').map(Number);
+    let total = bh * 60 + bm + minutes;
+    total = ((total % 1440) + 1440) % 1440;
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+
+  function minutesLabel(mins){
+    if(mins >= 60){
+      const h = Math.floor(mins/60), m = mins % 60;
+      return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+    }
+    return `${mins}分`;
+  }
+
+  function render(){
+    grid.innerHTML = '';
+    state.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.setProperty('--c', COLORS[item.colorIdx % COLORS.length]);
+
+      const stepButtonsHtml = item.quickSteps.map(step => `
+        <div class="btn-pair">
+          <button class="step-btn plus" data-id="${item.id}" data-role="inc" data-step="${step}">+${stepLabel(step, item.unit, item.type)}</button>
+          <button class="step-btn minus" data-id="${item.id}" data-role="dec" data-step="${step}">−${stepLabel(step, item.unit, item.type)}</button>
+        </div>
+      `).join('');
+
+      let middleHtml = '';
+      if(item.type === 'time'){
+        const until = computeUntil(item.baseTime, item.count);
+        middleHtml = `
+          <div class="until-line" id="until-${item.id}">${until} まで
+            <small>基準 ${escapeHtml(item.baseTime)} + <span id="num-${item.id}">${minutesLabel(item.count)}</span></small>
+          </div>
+          <div class="base-time-row">
+            <span>基準時刻</span>
+            <input type="time" data-id="${item.id}" data-role="baseTime" value="${item.baseTime}">
+          </div>
+        `;
+      } else {
+        middleHtml = `
+          <div class="count-row">
+            <div>
+              <div class="count-num" id="num-${item.id}">${item.count}</div>
+              <div class="count-unit">${escapeHtml(item.unit)}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="card-head">
+          <input class="emoji-input" data-id="${item.id}" data-role="emoji" value="${escapeHtml(item.emoji || '')}" maxlength="4">
+          <input class="card-name-input" value="${escapeHtml(item.name)}" data-id="${item.id}" data-role="name" />
+          <button class="card-remove" data-id="${item.id}" data-role="remove" title="削除">✕</button>
+        </div>
+        ${middleHtml}
+        <div class="btn-grid">${stepButtonsHtml}</div>
+        <div class="bottom-row">
+          <button class="ghost-btn" data-id="${item.id}" data-role="reset">0に戻す</button>
+        </div>
+        <div class="step-config">
+          ${item.type === 'count' ? `<span>単位</span><input type="text" class="unit-input" data-id="${item.id}" data-role="unit" value="${escapeHtml(item.unit)}" maxlength="6">` : ''}
+          <span>刻み(カンマ区切り${item.type==='time' ? '・分' : ''})</span>
+          <input type="text" class="steps-input" data-id="${item.id}" data-role="steps" value="${item.quickSteps.join(',')}">
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    const addWrap = document.createElement('div');
+    addWrap.className = 'add-card-wrap';
+    addWrap.innerHTML = `
+      <button data-role="addCount">＋回数系</button>
+      <button data-role="addTime">＋時間系</button>
+    `;
+    grid.appendChild(addWrap);
+
+    bindEvents();
+    updateOutput();
+  }
+
+  function bindEvents(){
+    grid.querySelectorAll('[data-role]').forEach(el => {
+      const id = el.dataset.id;
+      const role = el.dataset.role;
+
+      if(role === 'addCount'){
+        el.onclick = () => {
+          snapshotUndo();
+          const idx = state.items.length;
+          state.items.push({ id:'item'+Date.now(), type:'count', name:'新しい項目', unit:'回', count:0, quickSteps:[1,5,10], colorIdx: idx, emoji:'🎁' });
+          render();
+          pushState();
+        };
+        return;
+      }
+      if(role === 'addTime'){
+        el.onclick = () => {
+          snapshotUndo();
+          const idx = state.items.length;
+          state.items.push({ id:'item'+Date.now(), type:'time', name:'新しい時間項目', unit:'分', count:0, quickSteps:[15,30,60], colorIdx: idx, baseTime: nowHHMM(), emoji:'⏰' });
+          render();
+          pushState();
+        };
+        return;
+      }
+
+      if(!id) return;
+      const item = state.items.find(i => i.id === id);
+      if(!item) return;
+
+      if(role === 'inc'){ el.onclick = () => change(item, Number(el.dataset.step)); }
+      if(role === 'dec'){ el.onclick = () => change(item, -Number(el.dataset.step)); }
+      if(role === 'reset'){ el.onclick = () => { snapshotUndo(); item.count = 0; logAction(`${item.name} を 0 にリセット`); refreshDisplay(item, false); updateOutput(); pushState(); }; }
+      if(role === 'remove'){ el.onclick = () => {
+          if(state.items.length <= 1){ return; }
+          snapshotUndo();
+          state.items = state.items.filter(i => i.id !== id);
+          render();
+          pushState();
+        };
+      }
+      if(role === 'name'){
+        el.onblur = () => { if(el.value.trim() === item.name) return; snapshotUndo(); item.name = el.value.trim() || item.name; updateOutput(); pushState(); };
+        el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
+      }
+      if(role === 'emoji'){
+        el.onblur = () => { if(el.value.trim() === (item.emoji||'')) return; snapshotUndo(); item.emoji = el.value.trim(); updateOutput(); pushState(); };
+        el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
+      }
+      if(role === 'unit'){
+        el.onblur = () => { if(el.value.trim() === item.unit) return; snapshotUndo(); item.unit = el.value.trim() || item.unit; render(); pushState(); };
+        el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
+      }
+      if(role === 'steps'){
+        el.onblur = () => {
+          const parsed = el.value.split(',')
+            .map(s => parseInt(s.trim(), 10))
+            .filter(n => !isNaN(n) && n > 0);
+          if(!parsed.length) return;
+          snapshotUndo();
+          item.quickSteps = parsed;
+          render();
+          pushState();
+        };
+        el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
+      }
+      if(role === 'baseTime'){
+        el.onchange = () => { snapshotUndo(); item.baseTime = el.value; refreshDisplay(item, false); updateOutput(); pushState(); };
+      }
+    });
+  }
+
+  function change(item, delta){
+    snapshotUndo();
+    item.count = Math.max(0, item.count + delta);
+    const label = item.type === 'time' ? minutesLabel(Math.abs(delta)) : `${Math.abs(delta)}${item.unit}`;
+    logAction(`${item.name} ${delta > 0 ? '+' : '-'}${label} → ${item.type === 'time' ? minutesLabel(item.count) : item.count + item.unit}`);
+    refreshDisplay(item, true);
+    updateOutput();
+    pushState();
+  }
+
+  function refreshDisplay(item, bump){
+    if(item.type === 'time'){
+      const untilEl = document.getElementById('until-' + item.id);
+      const numEl = document.getElementById('num-' + item.id);
+      if(numEl) numEl.textContent = minutesLabel(item.count);
+      if(untilEl){
+        const until = computeUntil(item.baseTime, item.count);
+        untilEl.childNodes[0].textContent = until + ' まで ';
+        if(bump){
+          untilEl.style.transform = 'scale(1.08)';
+          setTimeout(() => untilEl.style.transform = 'scale(1)', 160);
+        }
+      }
+    } else {
+      const el = document.getElementById('num-' + item.id);
+      if(!el) return;
+      el.textContent = item.count;
+      if(bump){
+        el.classList.remove('bump');
+        void el.offsetWidth;
+        el.classList.add('bump');
+      }
+    }
+  }
+
+  function logAction(text){
+    const t = new Date();
+    const hh = String(t.getHours()).padStart(2,'0');
+    const mm = String(t.getMinutes()).padStart(2,'0');
+    const ss = String(t.getSeconds()).padStart(2,'0');
+    state.log.unshift({ time: `${hh}:${mm}:${ss}`, text });
+    if(state.log.length > 200) state.log.pop();
+    renderLog();
+  }
+
+  function renderLog(){
+    logList.innerHTML = state.log.map(l => `<div><span>${l.time}</span> — ${escapeHtml(l.text)}</div>`).join('');
+  }
+
+  function currentFormat(){
+    const el = document.querySelector('input[name="fmt"]:checked');
+    return el ? el.value : 'multi';
+  }
+
+  function describeItem(item){
+    if(item.type === 'time'){
+      const until = computeUntil(item.baseTime, item.count);
+      return `${item.name}: ${minutesLabel(item.count)}（${until}まで）`;
+    }
+    return `${item.name}: ${item.count}${item.unit}`;
+  }
+
+  function decoLine(item){
+    const emoji = item.emoji || '';
+    if(item.type === 'time'){
+      const until = computeUntil(item.baseTime, item.count);
+      return `${item.name}${emoji} ${minutesLabel(item.count)}（${until}まで）`;
+    }
+    return `${item.name}${emoji} ${item.count}${item.unit}`;
+  }
+
+  function updateOutput(){
+    const fmt = currentFormat();
+    let text = '';
+    if(fmt === 'deco'){
+      text = '- - - -経過- - - -\n' + state.items.map(decoLine).join('\n');
+    } else if(fmt === 'multi'){
+      text = state.items.map(describeItem).join('\n');
+    } else if(fmt === 'single'){
+      text = state.items.map(describeItem).join(' / ');
+    } else {
+      text = state.items.map(i => i.count).join(' ');
+    }
+    output.value = text;
+  }
+
+  document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = updateOutput);
+
+  document.getElementById('copyBtn').onclick = () => {
+    output.select();
+    const btn = document.getElementById('copyBtn');
+    navigator.clipboard.writeText(output.value).then(() => {
+      btn.textContent = 'コピーしました！';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'コピーする'; btn.classList.remove('copied'); }, 1400);
+    }).catch(() => {
+      document.execCommand('copy');
+      btn.textContent = 'コピーしました！';
+      setTimeout(() => { btn.textContent = 'コピーする'; }, 1400);
+    });
+  };
+
+  document.getElementById('resetAllBtn').onclick = () => {
+    snapshotUndo();
+    state.items.forEach(i => i.count = 0);
+    logAction('全項目をリセット');
+    render();
+    pushState();
+  };
+
+  document.getElementById('undoBtn').onclick = undo;
+  document.getElementById('stickyUndoBtn').onclick = undo;
+
+  document.getElementById('stickyResetBtn').onclick = () => {
+    document.getElementById('resetAllBtn').click();
+  };
+
+  document.getElementById('stickyCopyBtn').onclick = () => {
+    const btn = document.getElementById('stickyCopyBtn');
+    navigator.clipboard.writeText(output.value).then(() => {
+      btn.textContent = 'コピーしました！';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'テキストをコピー'; btn.classList.remove('copied'); }, 1400);
+    }).catch(() => {
+      output.select();
+      document.execCommand('copy');
+      btn.textContent = 'コピーしました！';
+      setTimeout(() => { btn.textContent = 'テキストをコピー'; }, 1400);
+    });
+  };
+
+  document.getElementById('logToggle').onclick = () => {
+    logList.classList.toggle('open');
+    document.getElementById('logToggle').textContent =
+      (logList.classList.contains('open') ? '▼' : '▶') + ' 操作ログを表示';
+  };
+
+  function tick(){
+    const diff = Math.floor((Date.now() - state.startTime) / 1000);
+    const h = String(Math.floor(diff/3600)).padStart(2,'0');
+    const m = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+    const s = String(diff%60).padStart(2,'0');
+    document.getElementById('elapsed').textContent = `${h}:${m}:${s}`;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
