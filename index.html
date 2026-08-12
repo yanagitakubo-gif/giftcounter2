@@ -203,6 +203,7 @@
     transition:border-color .12s, color .12s;
   }
   .ghost-btn:active{border-color:var(--text-main); color:var(--text-main);}
+  .ghost-btn:disabled, .sticky-reset:disabled{opacity:.4; cursor:default;}
 
   .step-config{
     display:flex; align-items:center; justify-content:center; gap:5px;
@@ -349,20 +350,11 @@
 
   <div class="grid" id="cardGrid"></div>
 
-  <div class="panel" style="margin-bottom:10px;">
-    <div class="panel-head">
-      <h2>共有リンク(このURLを開いた全員でカウントを共有)</h2>
-      <div class="panel-actions">
-        <button class="copy-btn" id="shareCopyBtn">リンクをコピー</button>
-      </div>
-    </div>
-    <textarea id="shareUrl" readonly style="min-height:40px;"></textarea>
-  </div>
-
   <div class="panel">
     <div class="panel-head">
       <h2>テキスト出力</h2>
       <div class="panel-actions">
+        <button class="ghost-btn" id="undoBtn" disabled>元に戻す</button>
         <button class="ghost-btn" id="resetAllBtn">全部リセット</button>
         <button class="copy-btn" id="copyBtn">コピーする</button>
       </div>
@@ -382,6 +374,7 @@
 </div>
 
 <div class="sticky-bar">
+  <button class="sticky-reset" id="stickyUndoBtn" disabled>元に戻す</button>
   <button class="sticky-reset" id="stickyResetBtn">リセット</button>
   <button class="sticky-copy" id="stickyCopyBtn">テキストをコピー</button>
 </div>
@@ -411,15 +404,6 @@
   }
   const ROOM_ID = params.get('room');
   const roomRef = db.ref('counters/' + ROOM_ID);
-
-  document.getElementById('shareUrl').value = location.href;
-  document.getElementById('shareCopyBtn').onclick = () => {
-    const btn = document.getElementById('shareCopyBtn');
-    navigator.clipboard.writeText(location.href).then(() => {
-      btn.textContent = 'コピーしました！';
-      setTimeout(() => btn.textContent = 'リンクをコピー', 1400);
-    });
-  };
 </script>
 <!-- ▲▲▲ Firebase 共有機能 ▲▲▲ -->
 
@@ -476,6 +460,29 @@
     roomRef.set(payload)
       .then(() => setSyncStatus('ok'))
       .catch(e => { console.error('sync push failed', e); setSyncStatus('error'); });
+  }
+
+  // ---- 元に戻す機能 ----
+  let undoStack = [];
+  function snapshotUndo(){
+    undoStack.push(JSON.stringify(state.items));
+    if(undoStack.length > 20) undoStack.shift();
+    updateUndoButton();
+  }
+  function undo(){
+    if(undoStack.length === 0) return;
+    const prev = undoStack.pop();
+    state.items = JSON.parse(prev);
+    logAction('操作を1つ元に戻しました');
+    render();
+    pushState();
+    updateUndoButton();
+  }
+  function updateUndoButton(){
+    const btn = document.getElementById('undoBtn');
+    const btn2 = document.getElementById('stickyUndoBtn');
+    if(btn) btn.disabled = undoStack.length === 0;
+    if(btn2) btn2.disabled = undoStack.length === 0;
   }
 
   function init(){
@@ -618,6 +625,7 @@
 
       if(role === 'addCount'){
         el.onclick = () => {
+          snapshotUndo();
           const idx = state.items.length;
           state.items.push({ id:'item'+Date.now(), type:'count', name:'新しい項目', unit:'回', count:0, quickSteps:[1,5,10], colorIdx: idx, emoji:'🎁' });
           render();
@@ -627,6 +635,7 @@
       }
       if(role === 'addTime'){
         el.onclick = () => {
+          snapshotUndo();
           const idx = state.items.length;
           state.items.push({ id:'item'+Date.now(), type:'time', name:'新しい時間項目', unit:'分', count:0, quickSteps:[15,30,60], colorIdx: idx, baseTime: nowHHMM(), emoji:'⏰' });
           render();
@@ -641,24 +650,25 @@
 
       if(role === 'inc'){ el.onclick = () => change(item, Number(el.dataset.step)); }
       if(role === 'dec'){ el.onclick = () => change(item, -Number(el.dataset.step)); }
-      if(role === 'reset'){ el.onclick = () => { item.count = 0; logAction(`${item.name} を 0 にリセット`); refreshDisplay(item, false); updateOutput(); pushState(); }; }
+      if(role === 'reset'){ el.onclick = () => { snapshotUndo(); item.count = 0; logAction(`${item.name} を 0 にリセット`); refreshDisplay(item, false); updateOutput(); pushState(); }; }
       if(role === 'remove'){ el.onclick = () => {
           if(state.items.length <= 1){ return; }
+          snapshotUndo();
           state.items = state.items.filter(i => i.id !== id);
           render();
           pushState();
         };
       }
       if(role === 'name'){
-        el.onblur = () => { item.name = el.value.trim() || item.name; updateOutput(); pushState(); };
+        el.onblur = () => { if(el.value.trim() === item.name) return; snapshotUndo(); item.name = el.value.trim() || item.name; updateOutput(); pushState(); };
         el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
       }
       if(role === 'emoji'){
-        el.onblur = () => { item.emoji = el.value.trim(); updateOutput(); pushState(); };
+        el.onblur = () => { if(el.value.trim() === (item.emoji||'')) return; snapshotUndo(); item.emoji = el.value.trim(); updateOutput(); pushState(); };
         el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
       }
       if(role === 'unit'){
-        el.onblur = () => { item.unit = el.value.trim() || item.unit; render(); pushState(); };
+        el.onblur = () => { if(el.value.trim() === item.unit) return; snapshotUndo(); item.unit = el.value.trim() || item.unit; render(); pushState(); };
         el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
       }
       if(role === 'steps'){
@@ -666,19 +676,22 @@
           const parsed = el.value.split(',')
             .map(s => parseInt(s.trim(), 10))
             .filter(n => !isNaN(n) && n > 0);
-          item.quickSteps = parsed.length ? parsed : item.quickSteps;
+          if(!parsed.length) return;
+          snapshotUndo();
+          item.quickSteps = parsed;
           render();
           pushState();
         };
         el.onkeydown = (e) => { if(e.key==='Enter'){ el.blur(); } };
       }
       if(role === 'baseTime'){
-        el.onchange = () => { item.baseTime = el.value; refreshDisplay(item, false); updateOutput(); pushState(); };
+        el.onchange = () => { snapshotUndo(); item.baseTime = el.value; refreshDisplay(item, false); updateOutput(); pushState(); };
       }
     });
   }
 
   function change(item, delta){
+    snapshotUndo();
     item.count = Math.max(0, item.count + delta);
     const label = item.type === 'time' ? minutesLabel(Math.abs(delta)) : `${Math.abs(delta)}${item.unit}`;
     logAction(`${item.name} ${delta > 0 ? '+' : '-'}${label} → ${item.type === 'time' ? minutesLabel(item.count) : item.count + item.unit}`);
@@ -780,11 +793,15 @@
   };
 
   document.getElementById('resetAllBtn').onclick = () => {
+    snapshotUndo();
     state.items.forEach(i => i.count = 0);
     logAction('全項目をリセット');
     render();
     pushState();
   };
+
+  document.getElementById('undoBtn').onclick = undo;
+  document.getElementById('stickyUndoBtn').onclick = undo;
 
   document.getElementById('stickyResetBtn').onclick = () => {
     document.getElementById('resetAllBtn').click();
